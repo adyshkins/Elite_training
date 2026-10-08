@@ -1,0 +1,22 @@
+# Результаты сборки первой практики
+/hello
+/hello.exe
+/go-practice-01
+/bin/
+*.exe
+*.test
+*.out
+
+# Локальные настройки и секреты
+.idea/
+.vscode/
+.env
+.env.*
+!.env.example
+!.env.sample
+
+# Временные файлы
+*.log
+*.tmp
+.DS_Store
+Thumbs.db
