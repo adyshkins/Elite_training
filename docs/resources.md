@@ -12,6 +12,9 @@
 | [Установка Go и редактора](environment.md) | Ещё не настроено окружение |
 | [Словарь](glossary.md) | Встретился незнакомый термин |
 | [Первая практика](../practices/01-introduction/README.md) | Создать программу своими руками |
+| [Вторая практика](../practices/02-control-flow-functions/README.md) | Освоить условия, циклы, функции и коллекции |
+| [Задания второй практики](../practices/02-control-flow-functions/assignments.md) | Реализовать сводку статусов задач |
+| [Примеры второй практики](../practices/02-control-flow-functions/examples/README.md) | Запустить четыре мини-программы |
 | [Подробный синтаксис и ввод](../practices/01-introduction/syntax-and-input.md) | Повторить переменные и подготовиться к конвертеру |
 | [Задания](../practices/01-introduction/assignments.md) | Написать карточку и конвертер |
 | [Публикация проекта](first-project-github.md) | Начать с Git и отправить код на GitHub |
@@ -70,6 +73,10 @@
 | [Спецификация](https://go.dev/ref/spec) | Уточнение правил; не первое чтение |
 | [Effective Go](https://go.dev/doc/effective_go) | Приёмы написания понятного кода после освоения основ |
 | [Go Modules](https://go.dev/ref/mod) | Модули и зависимости |
+| [Управляющие конструкции](https://go.dev/tour/flowcontrol/1) | `if`, `switch`, `for` |
+| [Функции](https://go.dev/tour/basics/4) | Параметры и возвращаемые значения |
+| [Срезы](https://go.dev/tour/moretypes/7) | `[]T`, `append`, `range` |
+| [Карты](https://go.dev/tour/moretypes/19) | `map`, ключи и значения |
 | [errors](https://pkg.go.dev/errors) | Проверка и сопоставление ошибок |
 | [encoding/json](https://pkg.go.dev/encoding/json) | Чтение и формирование JSON |
 | [testing](https://pkg.go.dev/testing) | Модульные тесты |
