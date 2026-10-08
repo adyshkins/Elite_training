@@ -1,0 +1,27 @@
+# Результаты сборки и проверок
+bin/
+dist/
+*.exe
+*.exe~
+*.test
+*.out
+coverage.*
+
+# Локальная конфигурация и секреты
+.env
+.env.*
+!.env.example
+!.env.sample
+.idea/
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+
+# Служебные и временные файлы
+.DS_Store
+Thumbs.db
+Desktop.ini
+work/
+*.log
+*.tmp
+__pycache__/
