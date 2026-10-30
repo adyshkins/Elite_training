@@ -1,0 +1,21 @@
+# Только локальная учебная БД. Не используйте эти учётные данные на сервере.
+services:
+  db:
+    image: postgres:17
+    environment:
+      POSTGRES_USER: student
+      POSTGRES_PASSWORD: local_training_only
+      POSTGRES_DB: tasks_lab
+    ports:
+      - "127.0.0.1:55432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./sql:/work/sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U student -d tasks_lab"]
+      interval: 3s
+      timeout: 3s
+      retries: 15
+
+volumes:
+  pgdata:

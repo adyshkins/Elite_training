@@ -1,37 +1,254 @@
 # Практическая работа № 6. PostgreSQL, SQL и связанные таблицы
 
-[К описанию курса](../../README.md) · [← Предыдущая практика](../05-project-git-json/README.md) · [Следующая практика →](../07-gorm-postgresql/README.md)
+[К курсу](../../README.md) · [← ПР № 5](../05-project-git-json/README.md) · [ПР № 7 →](../07-gorm-postgresql/README.md)
 
-**Курс:** «Бэкенд-разработка на языке Go»  
-**Продолжительность:** одна пара, 90 минут  
-**Статус:** план занятия
+**Дисциплина:** «Бэкенд-разработка на языке Go». **Формат:** 90 минут + самостоятельная часть. **Статус:** полная методичка.
 
-> Здесь опубликован план, а не готовая методичка. Пошаговое задание, стартовые файлы и точные критерии сдачи пока не опубликованы. Не воспринимайте этот план как окончательное условие самостоятельной работы.
+## Цель и ожидаемый результат
 
-## Цель
+В [ПР № 5](../05-project-git-json/README.md) задачи сохранялись в JSON-файл одного процесса. Это удобно для первого знакомства с хранением данных, но неудобно для нескольких пользователей, поиска по связанным сущностям и сложных изменений. В этом занятии переходим к **реляционной базе PostgreSQL**. Писать Go-код для подключения к БД **пока не нужно** — это тема ПР № 7 (GORM).
 
-Описывать связанные данные и выполнять операции средствами SQL.
+Система управления задачами расширяется: задача теперь относится к **проекту**. В конце занятия у вас будет база `tasks_lab` с таблицами `projects` и `tasks`, связью один-ко-многим, SQL-запросами для CRUD, `JOIN` и проверками ограничений.
 
-## Планируемая работа на занятии
+## План занятия — 90 минут
 
-1. Подключиться к подготовленному PostgreSQL, проверить доступность учебной БД.
-2. Создать projects и tasks с первичными и внешними ключами.
-3. Выполнить INSERT, SELECT, UPDATE, DELETE, фильтрацию и сортировку.
-4. Получить задачи вместе с названиями проектов через JOIN, проверить ограничение внешнего ключа.
+| Этап | Минут |
+|---|---:|
+| Подключение к PostgreSQL и проверка базы | 10 |
+| Схема, ключи и ограничения | 25 |
+| Добавление исходных данных (`INSERT`) | 10 |
+| Чтение, `WHERE`, `ORDER BY`, `JOIN` | 20 |
+| `UPDATE`, `DELETE`, транзакция | 15 |
+| Проверка ограничений и подведение итогов | 10 |
+| **Всего** | **90** |
 
-## Ожидаемый результат
+Рекомендация: инструменты установите **до занятия**, чтобы не тратить время пары на скачивание контейнеров. Если PostgreSQL уже доступен на компьютере или в аудитории, Docker не обязателен.
 
-Схема БД и работающие CRUD-запросы к связанным таблицам.
+## 0. Что понадобится и как запустить БД
 
-## Самостоятельная часть и расширение
+Предлагаются **два равноправных способа**. Выберите один; не запускайте оба одновременно для выполнения одной работы.
 
-Сохранить SQL-скрипты. Дополнительные виды связей и агрегатные запросы разобрать отдельно.
+### Вариант А (предпочтительный): Docker Compose
 
-## Связь с предыдущими работами
+Нужен работающий [Docker Desktop](https://docs.docker.com/desktop/) либо Docker Engine + Compose. Откройте терминал **в папке `practices/06-postgresql-sql`** скачанного курса, где находится `compose.yaml`:
 
-Используются знания и результаты предыдущих практик. Если потребуется стартовый проект, он должен сопровождать полное задание; сейчас в папке опубликован только план.
+~~~bash
+docker compose up -d
+docker compose ps
+~~~
 
-## Полезные ссылки
+Контейнер использует образ `postgres:17`, базу `tasks_lab` и пользователя `student`; порт на **вашем компьютере** — `127.0.0.1:55432`, внутри контейнера — `5432`. Логин и пароль из `compose.yaml` — **только для локального учебного окружения**, не для сервера в интернете.
 
-- [Установка PostgreSQL](https://www.postgresql.org/download/)
-- [Учебник PostgreSQL](https://www.postgresql.org/docs/current/tutorial.html)
+Чтобы войти в интерактивный `psql`:
+
+~~~bash
+docker compose exec db psql -U student -d tasks_lab
+~~~
+
+Здесь `\dt` покажет таблицы, `\d projects` — структуру, `\q` — выход. Сначала таблиц нет. Если `docker compose ps` показывает состояние Starting, дождитесь `healthy` и повторите вход. Команда `docker compose down` останавливает окружение, **сохраняя именованный том** с БД. Команда `down -v` стирает том с данными — применяйте её только при намеренном полном сбросе **учебной** БД.
+
+### Вариант Б: установленный PostgreSQL / pgAdmin
+
+Если PostgreSQL уже есть, создайте **отдельную учебную** базу `tasks_lab`, не меняя рабочие базы. Например, при доступе к локальному серверу и роли с правом `CREATEDB`:
+
+~~~bash
+createdb -U postgres tasks_lab
+psql -U postgres -d tasks_lab
+~~~
+
+В Windows путь к `psql.exe` может отсутствовать в `PATH` — используйте SQL Shell (psql) или полный путь к утилите. Пароль и порт зависят от **вашей** установки; они не обязаны совпадать с Docker-вариантом. Также можно выполнять файлы в Query Tool pgAdmin 4, выбрав именно `tasks_lab`.
+
+**Важное правило:** `02_seed.sql` удаляет учебные данные в таблицах `tasks` и `projects` перед повторным заполнением. Никогда не запускайте этот файл на базе с реальными данными.
+
+## 1. Схема: таблицы, первичные и внешние ключи
+
+Откройте [`sql/01_schema.sql`](sql/01_schema.sql). В нём описаны две таблицы:
+
+~~~text
+projects
+┌───────────────┐
+│ id (PK)       │
+│ name (UNIQUE) │
+│ created_at    │
+└──────┬────────┘
+       │ 1
+       │
+       │ N
+┌──────▼────────────┐
+│ tasks             │
+│ id (PK)           │
+│ project_id (FK)   │
+│ title             │
+│ status            │
+│ priority          │
+│ created_at        │
+└───────────────────┘
+~~~
+
+Пример основных команд:
+
+~~~sql
+CREATE TABLE projects (
+    id BIGINT GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
+    name TEXT NOT NULL UNIQUE,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    CONSTRAINT projects_name_check CHECK (length(btrim(name)) > 0 AND name = btrim(name))
+);
+
+CREATE TABLE tasks (
+    id BIGINT GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
+    project_id BIGINT NOT NULL REFERENCES projects(id) ON DELETE RESTRICT,
+    title TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'new',
+    priority SMALLINT NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    CONSTRAINT tasks_title_check CHECK (length(btrim(title)) > 0 AND title = btrim(title)),
+    CONSTRAINT tasks_status_check CHECK (status IN ('new', 'done')),
+    CONSTRAINT tasks_priority_check CHECK (priority BETWEEN 1 AND 3)
+);
+~~~
+
+**Разберём термины:** `PRIMARY KEY` однозначно определяет строку, `FOREIGN KEY` (`REFERENCES`) связывает задачу с существующим проектом, `NOT NULL` запрещает отсутствие значения, `UNIQUE` запрещает дубли имён проектов, `CHECK` проверяет допустимые статусы и приоритет, `DEFAULT` задаёт значение по умолчанию. `GENERATED ... AS IDENTITY` создаёт автоматически назначаемый идентификатор; не путайте его с номером строки в выводе. `ON DELETE RESTRICT` не позволит удалить проект, пока есть связанные задачи.
+
+Столбец `project_id` — **новый** по сравнению с моделью ПР № 5. Поле `created_at` здесь служит знакомством с типом `TIMESTAMPTZ`. Изменение Go-модели и связь через GORM будут в следующей практике.
+
+## 2. Как выполнять готовые SQL-файлы
+
+Все файлы лежат в [`sql/`](sql/01_schema.sql). Выполняйте их **строго по порядку**, на одной и той же базе.
+
+**Docker Compose, из каталога ПР № 6:**
+
+~~~bash
+docker compose exec -T db psql -X -v ON_ERROR_STOP=1 -U student -d tasks_lab -f /work/sql/01_schema.sql
+docker compose exec -T db psql -X -v ON_ERROR_STOP=1 -U student -d tasks_lab -f /work/sql/02_seed.sql
+docker compose exec -T db psql -X -v ON_ERROR_STOP=1 -U student -d tasks_lab -f /work/sql/03_select.sql
+docker compose exec -T db psql -X -v ON_ERROR_STOP=1 -U student -d tasks_lab -f /work/sql/04_mutations.sql
+docker compose exec -T db psql -X -v ON_ERROR_STOP=1 -U student -d tasks_lab -f /work/sql/05_verify.sql
+docker compose exec -T db psql -X -v ON_ERROR_STOP=1 -U student -d tasks_lab -f /work/sql/06_assert_constraints.sql
+~~~
+
+**Обычный `psql`:** в той же папке с SQL-файлами на вашем компьютере:
+
+~~~bash
+psql -X -v ON_ERROR_STOP=1 -U postgres -d tasks_lab -f sql/01_schema.sql
+psql -X -v ON_ERROR_STOP=1 -U postgres -d tasks_lab -f sql/02_seed.sql
+psql -X -v ON_ERROR_STOP=1 -U postgres -d tasks_lab -f sql/03_select.sql
+psql -X -v ON_ERROR_STOP=1 -U postgres -d tasks_lab -f sql/04_mutations.sql
+psql -X -v ON_ERROR_STOP=1 -U postgres -d tasks_lab -f sql/05_verify.sql
+psql -X -v ON_ERROR_STOP=1 -U postgres -d tasks_lab -f sql/06_assert_constraints.sql
+~~~
+
+Для установленной СУБД подставьте ваши имя роли, хост и порт. `-X` игнорирует персональные настройки `psqlrc`, `-f` исполняет SQL-файл, `ON_ERROR_STOP=1` останавливает выполнение при SQL-ошибке. В pgAdmin откройте файлы и выполните их по одному в Query Tool.
+
+**Повторный запуск:** `01_schema.sql` рассчитан на однократное создание таблиц. Если схема уже есть, **не запускайте его повторно**. Для повторного выполнения запросов и тестов достаточно выполнить `02_seed.sql` → `03_select.sql` → `04_mutations.sql` → `05_verify.sql`. Не используйте `DROP TABLE` ради повторения.
+
+## 3. INSERT: создаём два проекта и четыре задачи
+
+[`sql/02_seed.sql`](sql/02_seed.sql) создаёт два проекта — «Учебный бэкенд» и «Мобильный клиент» — и четыре задачи. Важное отличие от обычного сохранения JSON: задачу мы связываем с **существующим** `projects.id`, а не с придуманным числом.
+
+~~~sql
+INSERT INTO tasks (project_id, title, priority)
+SELECT id, 'Написать API', 3
+FROM projects
+WHERE name = 'Учебный бэкенд';
+~~~
+
+Это **пример для понимания**: он добавит ещё одну задачу, поэтому **не выполняйте отдельно**, если хотите получить ровно четыре задачи в контрольном сценарии. Точный набор данных находится в `02_seed.sql`. Для проверки количества используйте:
+
+~~~sql
+SELECT COUNT(*) FROM projects; -- 2
+SELECT COUNT(*) FROM tasks;    -- 4
+~~~
+
+## 4. SELECT: выборка, фильтрация, сортировка, JOIN
+
+Откройте [`sql/03_select.sql`](sql/03_select.sql). Выполните и разберите:
+
+~~~sql
+SELECT id, title, priority
+FROM tasks
+WHERE status = 'new' AND priority >= 2
+ORDER BY priority DESC, id ASC;
+~~~
+
+`WHERE` оставляет только подходящие строки; `ORDER BY` **явно** задаёт порядок. Без `ORDER BY` SQL **не гарантирует** порядок строк, даже если ранее они выводились по возрастанию ID.
+
+Чтобы отобразить задачу рядом с названием её проекта:
+
+~~~sql
+SELECT t.id, t.title, p.name AS project_name, t.status, t.priority
+FROM tasks AS t
+JOIN projects AS p ON p.id = t.project_id
+ORDER BY p.name, t.id;
+~~~
+
+`t` и `p` — псевдонимы таблиц, `JOIN ... ON` — условие связи. Это отношение **один проект — много задач**. В конце файла также есть `LEFT JOIN` с `COUNT(t.id)`: он показывает проекты даже если у них пока нет задач. Сравните поведение с `INNER JOIN`.
+
+## 5. UPDATE и DELETE + транзакция
+
+Откройте [`sql/04_mutations.sql`](sql/04_mutations.sql). Он добавляет одну задачу, обновляет статус и приоритет двух задач и удаляет одну временную запись. Всё находится между `BEGIN` и `COMMIT`:
+
+~~~sql
+BEGIN;
+
+UPDATE tasks
+SET status = 'done'
+WHERE title = 'Изучить Go';
+
+DELETE FROM tasks
+WHERE title = 'Временная задача';
+
+COMMIT;
+~~~
+
+Это фрагмент для разбора; выполняйте **полный файл**, иначе проверка `05_verify.sql` не совпадёт с результатом. `WHERE` в `UPDATE` и `DELETE` крайне важен: без него можно изменить или удалить **все** строки. `RETURNING` в полном файле показывает, какие данные затронуты.
+
+`BEGIN` начинает транзакцию, `COMMIT` сохраняет её изменения. Если экспериментировали и хотите отменить изменения **до `COMMIT`**, используйте `ROLLBACK`. Ошибки внутри PostgreSQL-транзакции переводят её в состояние aborted до `ROLLBACK`. Задачи о блокировках и конкурентных транзакциях — материал следующих занятий.
+
+## 6. Проверки и ограничения целостности
+
+Выполните [`sql/05_verify.sql`](sql/05_verify.sql) после основных действий. Он с помощью `DO $$ ... $$` проверит количество записей, изменения статуса, результат `INSERT`, `JOIN`, `DELETE`. При успехе в `psql` увидите:
+
+~~~text
+NOTICE:  OK: 2 проекта, 4 задачи, JOIN, INSERT, UPDATE, DELETE
+DO
+~~~
+
+Далее выполните [`sql/06_assert_constraints.sql`](sql/06_assert_constraints.sql): он автоматически проверяет пять запретов (FK, два CHECK, RESTRICT, UNIQUE), ловит **ожидаемые** SQL-ошибки и гарантирует, что данные не изменились. Потом откройте [набор намеренно ошибочных запросов](negative-tests.md) для самостоятельного разбора. Выполните **каждый по отдельности** в интерактивном `psql`. Проверьте, что нельзя сохранить задачу для несуществующего проекта, недопустимый приоритет и пустое название, а также удалить связанный проект. Ошибка **ожидаема**: ограничение должно сработать, а количество строк не измениться.
+
+## 7. Задание, сдача и связь с ПР № 7
+
+[Полные условия, самостоятельные задания и критерии](assignments.md).
+
+Все SQL-файлы храните в своём Git-репозитории (например, в `sql/practice-06/`). В личный README добавьте инструкцию запуска, назначение таблиц и результат `JOIN`. Личные пароли, файлы с реальными секретами и экспорт чужой БД **не публикуйте**.
+
+ПР № 7 будет подключать Go к этой структуре через GORM. Важная граница: **сейчас SQL-код и модель хранятся отдельно** — не пытайтесь написать HTTP API или ORM в рамках этой пары.
+
+## Частые ошибки
+
+| Симптом | Причина и исправление |
+|---|---|
+| `relation "projects" does not exist` | Не выполнен `01_schema.sql` или выбран не тот database |
+| `relation already exists` | Схема уже создана; повторяйте с `02_seed.sql` |
+| `foreign key violation` | Ссылаетесь на отсутствующий проект; проверьте `project_id` |
+| `check constraint violation` | Неверные статус, приоритет или пустое название |
+| Удаление проекта запрещено | У проекта есть задачи; `ON DELETE RESTRICT` работает правильно |
+| `docker compose exec` не работает | Контейнер не запущен; проверьте `docker compose ps` |
+| Счётчики неожиданны | Вы повторно запустили `04_mutations.sql` без `02_seed.sql` |
+| `psql` не найден | Используйте путь к `psql.exe`, SQL Shell или Query Tool pgAdmin |
+| В таблице нет данных | Убедитесь, что подключены к `tasks_lab`, а не к `postgres` |
+
+## Вопросы на защите
+
+1. Чем первичный ключ отличается от внешнего?
+2. Что означает связь один-ко-многим?
+3. Зачем `NOT NULL`, `UNIQUE`, `CHECK`?
+4. Почему в таблице задач нельзя произвольно указать `project_id=999999`?
+5. Что делает `ON DELETE RESTRICT`, чем оно отличается от `CASCADE`?
+6. Почему без `ORDER BY` нельзя рассчитывать на порядок строк?
+7. Чем `JOIN` отличается от `LEFT JOIN`?
+8. Для чего нужны `BEGIN`, `COMMIT` и `ROLLBACK`?
+9. Почему после ПР № 5 мы изучаем PostgreSQL, а не продолжаем хранить всё в JSON?
+10. Что будет, если забыть `WHERE` в `DELETE`?
+
+**Первоисточники:** [PostgreSQL tutorial](https://www.postgresql.org/docs/current/tutorial.html), [CREATE TABLE](https://www.postgresql.org/docs/current/sql-createtable.html), [Foreign keys](https://www.postgresql.org/docs/current/ddl-constraints.html), [JOIN](https://www.postgresql.org/docs/current/tutorial-join.html), [Transactions](https://www.postgresql.org/docs/current/tutorial-transactions.html), [Docker Compose](https://docs.docker.com/compose/).

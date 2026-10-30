@@ -25,3 +25,7 @@ work/
 *.log
 *.tmp
 __pycache__/
+
+# Локальные данные учебной программы из практики № 5
+tasks.json
+my-tasks.json
